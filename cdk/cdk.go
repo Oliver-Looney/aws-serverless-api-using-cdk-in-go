@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsapigateway"
-	_ "github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"os"
@@ -11,6 +11,11 @@ import (
 
 type CdkStackProps struct {
 	awscdk.StackProps
+}
+
+type LambdaData struct {
+	name        string
+	httpMethods string
 }
 
 func NewCdkStack(scope constructs.Construct, id string, props *CdkStackProps) awscdk.Stack {
@@ -22,7 +27,27 @@ func NewCdkStack(scope constructs.Construct, id string, props *CdkStackProps) aw
 
 	api := awsapigateway.NewRestApi(stack, jsii.String("fpl-intel-cdk"), nil)
 
+	helloWorldLambdaData := LambdaData{
+		name:        "hello-world",
+		httpMethods: "GET",
+	}
+
+	helloWorldLambda := CreateNewRustLambdaFunction(helloWorldLambdaData, stack)
+
 	return stack
+}
+
+func CreateNewRustLambdaFunction(lambdaConfig LambdaData, stack awscdk.Stack) awslambda.Function {
+	lambdaBuildDirectory := "../hello-world/target/lambda/"
+	lambdaBuildZip := "/bootstrap.zip"
+
+	return awslambda.NewFunction(stack, jsii.String(lambdaConfig.name), &awslambda.FunctionProps{
+		Runtime:    awslambda.Runtime_PROVIDED_AL2(),
+		Code:       awslambda.Code_FromAsset(jsii.String(lambdaBuildDirectory+lambdaConfig.name+lambdaBuildZip), nil),
+		Handler:    jsii.String("bootstrap"),
+		MemorySize: jsii.Number(128),
+		Timeout:    awscdk.Duration_Seconds(jsii.Number(30)),
+	})
 }
 
 func main() {
