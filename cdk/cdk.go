@@ -33,6 +33,7 @@ func NewCdkStack(scope constructs.Construct, id string, props *CdkStackProps) aw
 	}
 
 	helloWorldLambda := CreateNewRustLambdaFunction(helloWorldLambdaData, stack)
+	AddLambdaToApiGateway(helloWorldLambda, helloWorldLambdaData, api)
 
 	return stack
 }
@@ -48,6 +49,20 @@ func CreateNewRustLambdaFunction(lambdaConfig LambdaData, stack awscdk.Stack) aw
 		MemorySize: jsii.Number(128),
 		Timeout:    awscdk.Duration_Seconds(jsii.Number(30)),
 	})
+}
+
+func AddLambdaToApiGateway(lambdaFunction awslambda.Function, lambdaConfig LambdaData, api awsapigateway.RestApi) {
+	resource := api.Root().AddResource(jsii.String(lambdaConfig.name), nil)
+	apiIntegration := awsapigateway.NewLambdaIntegration(lambdaFunction, &awsapigateway.LambdaIntegrationOptions{
+		Proxy: jsii.Bool(true),
+	})
+
+	corsOptions := &awsapigateway.CorsOptions{
+		AllowOrigins: awsapigateway.Cors_ALL_ORIGINS(),
+		AllowMethods: awsapigateway.Cors_ALL_METHODS(),
+	}
+	resource.AddCorsPreflight(corsOptions)
+	resource.AddMethod(jsii.String("GET"), apiIntegration, nil)
 }
 
 func main() {
